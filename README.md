@@ -1,48 +1,66 @@
-# Astro Starter Kit: Basics
+# Astro Code Editor
 
-```sh
-npm create astro@latest -- --template basics
+A web-based code editor built with Astro and React that allows you to write, compile, and run C++ and Java code.
+
+## Setup and Running the Application
+
+### Prerequisites
+
+- Node.js (v14 or higher)
+- npm or yarn
+- C++ compiler (g++) for C++ code execution
+- Java Development Kit (JDK) for Java code execution
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+
+```bash
+npm install
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/basics)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/basics/devcontainer.json)
+### Running the Application
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+**Step 1: Start the backend server**
 
-![just-the-basics](https://github.com/withastro/astro/assets/2244813/a0a5533c-a856-4198-8470-2d67b1d7c554)
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src/
-│   ├── layouts/
-│   │   └── Layout.astro
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+npm run server
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+This will start the backend server on port 5000, which handles code compilation and execution. The server uses ES modules (not CommonJS).
 
-## 🧞 Commands
+**Step 2: Start the Astro frontend**
 
-All commands are run from the root of the project, from a terminal:
+In a new terminal:
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+```bash
+npm run dev
+```
 
-## 👀 Want to learn more?
+This will start the Astro development server, typically on port 4321.
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+### Accessing the Application
+
+Open your browser and navigate to:
+
+```
+http://localhost:4321
+```
+
+## Features
+
+- Write and execute C++ and Java code
+- Syntax highlighting
+- Real-time compilation and execution
+- Error reporting
+- Responsive design
+
+## Technology Stack
+
+- Astro
+- React
+- Monaco Editor
+- Bootstrap
+- Express.js backend
+- Node.js
