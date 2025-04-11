@@ -1,14 +1,13 @@
-
 ---
 import Layout from '../layouts/Layout.astro';
-import CodeEditor from '../components/CodeEditor.jsx';
+import CollaborativeEditor from '../components/CollaborativeEditor.jsx';
 import '../styles/index.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 ---
 
 <Layout title="Astro Code Editor">
   <div id="editor-root">
-    <CodeEditor client:only="react" />
+    <CollaborativeEditor client:only="react" />
   </div>
 </Layout>
 

@@ -1,26 +1,51 @@
-import React, { useState } from "react";
-import Editor from "@monaco-editor/react";
+import React, { useState, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
 import axios from "axios";
 import { Container, Button, Form, Spinner, Alert, Tabs, Tab } from "react-bootstrap";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../styles/global.css";
 import ChatBot from "./ChatBot";
+import { useParams } from 'react-router-dom';
+import { socket } from '../socket';
+import { FaPlay, FaSpinner } from 'react-icons/fa';
 
-function CodeEditor() {
-  const [code, setCode] = useState(`// C++ code here\n#include <iostream>\nint main() {\n  std::cout << "Hello, World!" << std::endl;\n  return 0;\n}`);
-  const [language, setLanguage] = useState("cpp");
-  const [output, setOutput] = useState("");
+const CodeEditor = () => {
+  const { sessionId } = useParams();
+  const [code, setCode] = useState('');
+  const [language, setLanguage] = useState('cpp');
+  const [output, setOutput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const languageOptions = [
+    { value: 'cpp', label: 'C++' },
+    { value: 'java', label: 'Java' },
+    { value: 'python', label: 'Python' }
+  ];
+
+  const getLanguageMode = (language) => {
+    switch (language) {
+      case 'cpp':
+        return 'cpp';
+      case 'java':
+        return 'java';
+      case 'python':
+        return 'python';
+      default:
+        return 'text';
+    }
+  };
+
   const handleLanguageChange = (e) => {
-    const selectedLanguage = e.target.value;
-    setLanguage(selectedLanguage);
+    const newLanguage = e.target.value;
+    setLanguage(newLanguage);
     setCode(
-      selectedLanguage === "cpp"
+      newLanguage === "cpp"
         ? `// C++ code here\n#include <iostream>\nint main() {\n  std::cout << "Hello, World!" << std::endl;\n  return 0;\n}`
-        : `// Java code here\npublic class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello, World!");\n  }\n}`
+        : newLanguage === "java"
+          ? `// Java code here\npublic class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello, World!");\n  }\n}`
+          : `# Python code here\nprint("Hello, World!")`
     );
   };
 
@@ -32,11 +57,13 @@ function CodeEditor() {
     setLoading(true);
     setError(null);
     try {
+      // Target the Docker container running on localhost:5000
       const response = await axios.post("http://localhost:5000/run", { code, language });
       setOutput(response.data.output);
     } catch (err) {
+      console.error("Code execution error:", err);
       setError(err.response?.data?.error || "Error running code");
-      setOutput(err.response?.data?.output || "");
+      setOutput(err.response?.data?.output || "Failed to connect to code execution service. Make sure the Docker container is running.");
     } finally {
       setLoading(false);
     }
@@ -53,12 +80,13 @@ function CodeEditor() {
                 <Form.Select size="sm" value={language} onChange={handleLanguageChange}>
                   <option value="cpp">C++</option>
                   <option value="java">Java</option>
+                  <option value="python">Python</option>
                 </Form.Select>
               </Form.Group>
             </div>
             <Editor
               height="calc(100% - 40px)"
-              language={language}
+              language={getLanguageMode(language)}
               theme="vs-dark"
               value={code}
               options={{
@@ -119,6 +147,6 @@ function CodeEditor() {
       </PanelGroup>
     </Container>
   );
-}
+};
 
 export default CodeEditor;
