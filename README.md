@@ -1,66 +1,80 @@
-# Astro Code Editor
+# AstroCodePad
 
-A web-based code editor built with Astro and React that allows you to write, compile, and run C++ and Java code.
+A modern, mobile-friendly web-based code editor built with Astro and React. Write, run, and get instant results for C++, Java, Python, JavaScript, and more—powered by the Judge0 API.
 
-## Setup and Running the Application
+---
+
+## ✨ Features
+- Write and execute code in many languages (C++, Java, Python, JS, etc.)
+- Beautiful, responsive UI (works great on mobile and desktop)
+- Monaco Editor with syntax highlighting
+- Output window with error reporting
+- Floating AI chat bot (Mistral API)
+- No backend/server required—deploy anywhere (Netlify, Vercel, etc.)
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-
-- Node.js (v14 or higher)
+- Node.js (v16 or higher)
 - npm or yarn
-- C++ compiler (g++) for C++ code execution
-- Java Development Kit (JDK) for Java code execution
+- [RapidAPI account](https://rapidapi.com/) for Judge0 API key
+- [Mistral API key](https://mistral.ai/) for chat bot (optional, but recommended)
 
 ### Installation
-
 1. Clone the repository
 2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env` file in the root of the project.
+4. Add your API keys to the `.env` file:
+   ```env
+   PUBLIC_JUDGE0_API_KEY="YOUR_RAPIDAPI_KEY"
+   PUBLIC_MISTRAL_API_KEY="YOUR_MISTRAL_API_KEY"
+   ```
 
-```bash
-npm install
-```
-
-### Running the Application
-
-**Step 1: Start the backend server**
-
-```bash
-npm run server
-```
-
-This will start the backend server on port 5000, which handles code compilation and execution. The server uses ES modules (not CommonJS).
-
-**Step 2: Start the Astro frontend**
-
-In a new terminal:
-
+### Running Locally
 ```bash
 npm run dev
 ```
+Open your browser at [http://localhost:4321](http://localhost:4321)
 
-This will start the Astro development server, typically on port 4321.
+---
 
-### Accessing the Application
+## 🌍 Deploying to Netlify
+1. Push your code to GitHub/GitLab/Bitbucket
+2. Connect your repo on [Netlify](https://netlify.com/)
+3. Set build command: `npm run build`
+4. Set publish directory: `dist`
+5. Deploy!
 
-Open your browser and navigate to:
+---
 
-```
-http://localhost:4321
-```
-
-## Features
-
-- Write and execute C++ and Java code
-- Syntax highlighting
-- Real-time compilation and execution
-- Error reporting
-- Responsive design
-
-## Technology Stack
-
+## 🛠️ Technology Stack
 - Astro
 - React
 - Monaco Editor
+- Judge0 API (via RapidAPI)
 - Bootstrap
-- Express.js backend
-- Node.js
+- Mistral AI (for chat bot)
+
+---
+
+## 📱 Mobile Experience
+- Editor and output stack vertically
+- Floating chat button for easy access
+- Touch-friendly controls and layout
+
+---
+
+## 🙏 Credits
+- [Judge0](https://judge0.com/) for code execution API
+- [Mistral AI](https://mistral.ai/) for chat bot
+- [Astro](https://astro.build/) & [Monaco Editor](https://microsoft.github.io/monaco-editor/)
+
+---
+
+## License
+MIT

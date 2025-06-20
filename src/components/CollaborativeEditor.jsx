@@ -1,323 +1,249 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
-import { io } from "socket.io-client";
-import { Container, Button, Form, Spinner, Alert, Tabs, Tab } from "react-bootstrap";
+import { Container, Button, Form, Spinner, Alert, Tabs, Tab, Dropdown } from "react-bootstrap";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../styles/global.css";
 import ChatBot from "./ChatBot";
-import ActiveUsers from "./ActiveUsers";
-import SessionManager from "./SessionManager";
-import axios from "axios";
+import { FaComments } from "react-icons/fa";
+import Modal from "react-bootstrap/Modal";
 
-const socket = io("http://localhost:5000");
+// Judge0 language mapping
+const JUDGE0_LANGUAGES = [
+  { id: 54, value: "cpp", label: "C++ (GCC 9.2.0)" },
+  { id: 62, value: "java", label: "Java (OpenJDK 13.0.1)" },
+  { id: 71, value: "python", label: "Python (3.8.1)" },
+  { id: 63, value: "javascript", label: "JavaScript (Node.js 12.14.0)" },
+  { id: 50, value: "c", label: "C (GCC 9.2.0)" },
+  { id: 51, value: "pascal", label: "Pascal (FPC 3.0.4)" },
+  { id: 68, value: "php", label: "PHP (7.4.1)" },
+  { id: 70, value: "python2", label: "Python2 (2.7.17)" },
+  { id: 72, value: "ruby", label: "Ruby (2.7.0)" },
+  { id: 73, value: "rust", label: "Rust (1.40.0)" },
+  { id: 74, value: "typescript", label: "TypeScript (3.7.4)" },
+  { id: 60, value: "go", label: "Go (1.13.5)" },
+  { id: 61, value: "haskell", label: "Haskell (GHC 8.6.5)" },
+  { id: 65, value: "perl", label: "Perl (5.28.1)" },
+  { id: 67, value: "python3", label: "Python3 (3.8.1)" },
+  // Add more as needed
+];
 
-function CollaborativeEditor() {
-  const [code, setCode] = useState(`// C++ code here\n#include <iostream>\nint main() {\n  std::cout << "Hello, World!" << std::endl;\n  return 0;\n}`);
-  const [language, setLanguage] = useState("cpp");
-  const [output, setOutput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [username, setUsername] = useState("");
-  const [activeUsers, setActiveUsers] = useState([]);
-  const [cursors, setCursors] = useState({});
-  const [sessionId, setSessionId] = useState(null);
-  const editorRef = useRef(null);
-  const decorationsRef = useRef([]);
+const DEFAULT_CODE = {
+  cpp: `#include <iostream>
+
+int main() {
+    int num1, num2, sum;
+    std::cout << "Enter first number: " << std::endl;
+    std::cin >> num1;
+    std::cout << "Enter second number: " << std::endl;
+    std::cin >> num2;
+    sum = num1 + num2;
+    std::cout << "The sum of the two numbers is: " << sum << std::endl;
+    return 0;
+}`,
+  java: `// Java code here\npublic class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello, World!");\n  }\n}`,
+  python: `# Python code here\nprint("Hello, World!")`,
+  javascript: `// JavaScript code here\nconsole.log("Hello, World!");`,
+  c: `// C code here\n#include <stdio.h>\nint main() {\n  printf("Hello, World!\\n");\n  return 0;\n}`,
+  typescript: `// TypeScript code here\nconsole.log("Hello, World!");`,
+  go: `// Go code here\npackage main\nimport "fmt"\nfunc main() {\n  fmt.Println("Hello, World!")\n}`,
+  ruby: `# Ruby code here\nputs "Hello, World!"`,
+  rust: `// Rust code here\nfn main() {\n  println!("Hello, World!");\n}`,
+  php: `<?php\necho "Hello, World!";\n?>`,
+  haskell: `-- Haskell code here\nmain = putStrLn "Hello, World!"`,
+  perl: `# Perl code here\nprint "Hello, World!\\n";`,
+  pascal: `// Pascal code here\nprogram Hello;\nbegin\n  writeln('Hello, World!');\nend.`,
+  python2: `# Python2 code here\nprint "Hello, World!"`,
+  python3: `# Python3 code here\nprint("Hello, World!")`,
+};
+
+const useWindowSize = () => {
+  const [windowSize, setWindowSize] = useState({
+    width: undefined,
+    height: undefined,
+  });
 
   useEffect(() => {
-    // Check for session ID in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionParam = urlParams.get('session');
-
-    if (sessionParam) {
-      // Join existing session
-      setSessionId(sessionParam);
-      loadSession(sessionParam);
-    } else {
-      // Create new session
-      createNewSession();
+    function handleResize() {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
     }
 
-    // Prompt for username if not set
-    if (!username) {
-      const name = prompt("Please enter your name:");
-      if (name) {
-        setUsername(name);
-      }
-    }
+    window.addEventListener("resize", handleResize);
+    handleResize();
+
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const createNewSession = async () => {
-    try {
-      const response = await axios.post('http://localhost:5000/api/sessions', {
-        initialCode: code
-      });
-      setSessionId(response.data.sessionId);
-      // Update URL with session ID
-      window.history.pushState({}, '', `?session=${response.data.sessionId}`);
-    } catch (err) {
-      console.error('Failed to create session:', err);
-      setError('Failed to create new session');
-    }
-  };
+  return windowSize;
+};
 
-  const loadSession = async (sessionId) => {
-    try {
-      const response = await axios.get(`http://localhost:5000/api/sessions/${sessionId}`);
-      setCode(response.data.code);
-      if (username) {
-        socket.emit("join-document", { documentId: sessionId, username });
-      }
-    } catch (err) {
-      console.error('Failed to load session:', err);
-      setError('Failed to load session');
-    }
-  };
+function CollaborativeEditor() {
+  const [code, setCode] = useState(DEFAULT_CODE.cpp);
+  const [language, setLanguage] = useState("cpp");
+  const [output, setOutput] = useState("");
+  const [stdin, setStdin] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { width } = useWindowSize();
+  const isMobile = width !== undefined && width <= 768;
 
-  useEffect(() => {
-    if (sessionId && username) {
-      socket.emit("join-document", { documentId: sessionId, username });
-    }
-  }, [sessionId, username]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on("document-state", (state) => {
-      setCode(state);
-    });
-
-    socket.on("users-update", (users) => {
-      setActiveUsers(users);
-    });
-
-    socket.on("cursor-update", ({ userId, username, position }) => {
-      setCursors(prev => ({
-        ...prev,
-        [userId]: { username, position }
-      }));
-    });
-
-    socket.on("text-change", (changes) => {
-      setCode(changes);
-    });
-
-    socket.on("code-restored", (version) => {
-      setCode(version.code);
-    });
-
-    return () => {
-      socket.off("document-state");
-      socket.off("users-update");
-      socket.off("cursor-update");
-      socket.off("text-change");
-      socket.off("code-restored");
-    };
-  }, [socket]);
-
-  // Update cursor decorations when cursors change
-  useEffect(() => {
-    if (editorRef.current) {
-      updateCursorDecorations();
-    }
-  }, [cursors]);
-
-  const updateCursorDecorations = () => {
-    if (!editorRef.current) return;
-
-    // Remove existing decorations
-    if (decorationsRef.current.length > 0) {
-      editorRef.current.deltaDecorations(decorationsRef.current, []);
-      decorationsRef.current = [];
-    }
-
-    // Create new decorations for each cursor
-    const newDecorations = Object.entries(cursors).map(([userId, { username, position }]) => {
-      // Skip current user's cursor
-      if (userId === socket.id) return null;
-
-      // Create cursor decoration
-      const decoration = {
-        range: {
-          startLineNumber: position.lineNumber,
-          startColumn: position.column,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column + 1,
-        },
-        options: {
-          className: 'cursor-decoration',
-          hoverMessage: { value: username },
-          zIndex: 100,
-        },
-      };
-
-      // Create label decoration
-      const labelDecoration = {
-        range: {
-          startLineNumber: position.lineNumber,
-          startColumn: position.column,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        },
-        options: {
-          after: {
-            content: username,
-            inlineClassName: 'cursor-label',
-          },
-          zIndex: 100,
-        },
-      };
-
-      return [decoration, labelDecoration];
-    }).filter(Boolean).flat();
-
-    // Apply new decorations
-    if (newDecorations.length > 0) {
-      decorationsRef.current = editorRef.current.deltaDecorations([], newDecorations);
-    }
-  };
-
-  const handleEditorDidMount = (editor) => {
-    editorRef.current = editor;
-    
-    // Add cursor decorations
-    editor.onDidChangeCursorPosition((e) => {
-      const position = e.position;
-      socket.emit("cursor-move", position);
-    });
-  };
-
-  const handleLanguageChange = (e) => {
-    const selectedLanguage = e.target.value;
+  const handleLanguageChange = (selectedLanguage) => {
     setLanguage(selectedLanguage);
-    setCode(
-      selectedLanguage === "cpp"
-        ? `// C++ code here\n#include <iostream>\nint main() {\n  std::cout << "Hello, World!" << std::endl;\n  return 0;\n}`
-        : `// Java code here\npublic class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello, World!");\n  }\n}`
-    );
-  };
-
-  const handleCodeChange = (newValue) => {
-    setCode(newValue);
-    if (sessionId) {
-      socket.emit("text-change", { 
-        documentId: sessionId, 
-        changes: newValue,
-        author: username
-      });
-    }
+    setCode(DEFAULT_CODE[selectedLanguage] || "");
   };
 
   const runCode = async () => {
     setLoading(true);
     setError(null);
+    setOutput("");
     try {
-      const response = await fetch("http://localhost:5000/run", {
+      // Find Judge0 language id
+      const langObj = JUDGE0_LANGUAGES.find((l) => l.value === language);
+      if (!langObj) throw new Error("Unsupported language");
+      const response = await fetch("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-RapidAPI-Key": import.meta.env.PUBLIC_JUDGE0_API_KEY,
+          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
         },
-        body: JSON.stringify({ code, language }),
+        body: JSON.stringify({
+          source_code: code,
+          language_id: langObj.id,
+          stdin: stdin,
+        }),
       });
       const data = await response.json();
-      setOutput(data.output);
+      if (data.stderr) {
+        setOutput(data.stderr);
+      } else if (data.compile_output) {
+        setOutput(data.compile_output);
+      } else {
+        setOutput(data.stdout || "");
+      }
     } catch (err) {
-      console.error("Code execution error:", err);
-      setError(err.response?.data?.error || "Error running code");
-      setOutput(err.response?.data?.output || "Failed to connect to code execution service.");
+      setError(err.message || "Error running code");
     } finally {
       setLoading(false);
     }
   };
 
+  // Handler to set code from chat bot
+  const setCodeFromChat = (codeFromBot) => {
+    setCode(codeFromBot);
+  };
+
+  const editorPanel = (
+    <Editor
+      height={isMobile ? "calc(100vh - 250px)" : "100%"}
+      language={language}
+      theme="vs-dark"
+      value={code}
+      options={{
+        selectOnLineNumbers: true,
+        minimap: { enabled: false },
+        fontSize: 14,
+        renderLineHighlight: 'none',
+      }}
+      onChange={setCode}
+    />
+  );
+
+  const outputPanel = (
+    <div className="output-container">
+      <div className="output-header">
+        <h5>Output</h5>
+        <Button className="run-btn" onClick={runCode} disabled={loading}>
+          {loading ? <Spinner size="sm" animation="border" /> : "Run"}
+        </Button>
+      </div>
+      {error && <Alert variant="danger">{error}</Alert>}
+      <div className="output-window">
+        <pre className="output-text">{output}</pre>
+      </div>
+      <div className="input-container">
+        <Form.Label className="stdin-label">Input (stdin)</Form.Label>
+        <Form.Control
+          as="textarea"
+          rows={3}
+          placeholder="Provide all necessary input here before running the code. For multiple inputs, place each on a new line."
+          value={stdin}
+          onChange={(e) => setStdin(e.target.value)}
+          className="stdin-input"
+        />
+      </div>
+    </div>
+  );
+
+  const chatPanel = (
+    <div className="chatbot-container">
+      <ChatBot onCodeInsert={setCodeFromChat} />
+    </div>
+  );
+
   return (
     <Container fluid className="code-editor-container">
       <div className="editor-header">
         <div className="editor-title">
-          <h4>Collaborative Code Editor</h4>
+          <h2 style={{ margin: 0, color: 'var(--accent-color)' }}>AstroCodePad</h2>
+          <div style={{ fontSize: '1.05rem', color: 'var(--text-muted)', marginTop: 2 }}>
+            The modern, mobile-friendly code editor & runner for all your languages. Powered by Judge0 & Astro.
+          </div>
         </div>
         <div className="editor-controls">
-          <ActiveUsers users={activeUsers} />
-          <SessionManager 
-            sessionId={sessionId} 
-            onSessionChange={setCode}
-            username={username}
-          />
-          <Form.Group className="language-selector">
-            <Form.Select size="sm" value={language} onChange={handleLanguageChange}>
-              <option value="cpp">C++</option>
-              <option value="java">Java</option>
-            </Form.Select>
-          </Form.Group>
+          <Dropdown onSelect={handleLanguageChange} className="language-selector-dropdown">
+            <Dropdown.Toggle variant="secondary" id="language-dropdown">
+              {JUDGE0_LANGUAGES.find(l => l.value === language)?.label || 'Select Language'}
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              {JUDGE0_LANGUAGES.map((lang) => (
+                <Dropdown.Item key={lang.value} eventKey={lang.value}>{lang.label}</Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
         </div>
       </div>
       
-      <PanelGroup direction="horizontal" className="panel-group">
-        <Panel defaultSize={60} minSize={30} maxSize={80}>
-          <div className="editor-container">
-            <Editor
-              height="100%"
-              language={language}
-              theme="vs-dark"
-              value={code}
-              options={{
-                selectOnLineNumbers: true,
-                minimap: { enabled: false },
-                fontSize: 14,
-                renderLineHighlight: 'none',
-              }}
-              onChange={handleCodeChange}
-              onMount={handleEditorDidMount}
-            />
-          </div>
-        </Panel>
-
-        <PanelResizeHandle className="resize-handle" />
-
-        <Panel defaultSize={40} minSize={20}>
-          <div className="output-container">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="m-0">Output</h5>
-              <Button 
-                variant="success" 
-                onClick={runCode} 
-                disabled={loading} 
-                className="run-btn"
-                size="sm"
-              >
-                {loading ? (
-                  <>
-                    <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
-                    <span className="ms-2">Running...</span>
-                  </>
-                ) : (
-                  "▶ Run Code"
-                )}
-              </Button>
+      {isMobile ? (
+        <Tabs defaultActiveKey="editor" id="main-tabs" className="custom-tabs" fill>
+          <Tab eventKey="editor" title="Editor">
+            <div className="tab-content-wrapper editor-tab">
+              {editorPanel}
             </div>
-
-            {error && (
-              <Alert variant="danger" className="mb-3 py-2">
-                <small>{error}</small>
-              </Alert>
-            )}
-
-            <Tabs defaultActiveKey="output" id="output-tabs" className="mb-0 custom-tabs">
-              <Tab eventKey="output" title="Program Output">
-                <div className="tab-content-wrapper">
-                  <pre className="output-text">{output || "Your code output will appear here..."}</pre>
-                </div>
-              </Tab>
-              <Tab eventKey="chat" title="AI Assistant">
-                <div className="tab-content-wrapper">
-                  <ChatBot />
-                </div>
-              </Tab>
-            </Tabs>
-          </div>
-        </Panel>
-      </PanelGroup>
+          </Tab>
+          <Tab eventKey="output" title="Output">
+            <div className="tab-content-wrapper">
+              {outputPanel}
+            </div>
+          </Tab>
+          <Tab eventKey="chat" title="Chat">
+            <div className="tab-content-wrapper">
+              {chatPanel}
+            </div>
+          </Tab>
+        </Tabs>
+      ) : (
+        <PanelGroup direction="horizontal" className="panel-group main-panel-group">
+          <Panel defaultSize={60} minSize={20}>
+            {editorPanel}
+          </Panel>
+          <PanelResizeHandle className="resize-handle" />
+          <Panel defaultSize={40} minSize={20}>
+            <PanelGroup direction="vertical">
+              <Panel defaultSize={50} minSize={20}>
+                {outputPanel}
+              </Panel>
+              <PanelResizeHandle className="resize-handle" />
+              <Panel defaultSize={50} minSize={20}>
+                {chatPanel}
+              </Panel>
+            </PanelGroup>
+          </Panel>
+        </PanelGroup>
+      )}
     </Container>
   );
 }
